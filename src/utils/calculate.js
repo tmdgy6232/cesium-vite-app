@@ -1,6 +1,10 @@
 import * as Cesium from "cesium";
 
-/* Carterian3(직교)값 지리적좌표계 값으로 변환 후 중심점 구하고 다시 직교좌표계 값으로 변환하기 */
+/**
+ * function : 직교좌표계 폴리곤 중심점 구하기
+ * @param {*} points : 직교좌표계 포인트 배열
+ * @returns Cesium.Cartesian3 = 중심점 좌표
+ */
 export function getCentroidCartesian(points) {
   let totalLongitude = 0;
   let totalLatitude = 0;
@@ -29,7 +33,11 @@ export function getCentroidCartesian(points) {
   return Cesium.Cartesian3.fromDegrees(avgLongitude, avgLatitude, avgHeight);
 }
 
-
+/**
+ * function : 지리적 좌표계값 중심점 구하기
+ * @param {*} points : 직교좌표계 포인트 배열
+ * @returns Object(longitude, latitude, height) = 지리적좌표계
+ */
 /* Carterian3(직교)값 지리적좌표계 값으로 변환 후 중심점 구하고 반환 */
 export function getCentroidGeograhpic(points) {
   let totalLongitude = 0;
@@ -59,6 +67,12 @@ export function getCentroidGeograhpic(points) {
 
   return {longitude: avgLongitude, latitude: avgLatitude, height:avgHeight};
 }
+
+/**
+ * function : 직교좌표계 지리적좌표계로 변환
+ * @param {*} cartesian : 직교좌표계 포인트
+ * @returns Object(longitude, latitude, height) = 지리적좌표계
+ */
 const convertCartesianToGeographic = (cartesian) => {
     // 라디안 값으로 리턴하니
     const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
@@ -80,19 +94,15 @@ const convertCartesianToGeographic = (cartesian) => {
 export const moveCentroidToCoordinate = (points, targetLongitude, targetLatitude, targetHeight) => {
   // 지리적 좌표계 중심점
   const centroid = getCentroidGeograhpic(points);
-  console.log(`지리적 좌표계 중심점: ${centroid.avgLongitude}, ${centroid.avgLatitude}, ${centroid.avgHeight}`);
   // 도형 좌표별 지리적 좌표계 값
   const geographicPoints = points.map((point) => convertCartesianToGeographic(point));
-  console.log(`도형 좌표별 지리적 좌표계 값: ${geographicPoints}`);
   // 중심점과 도형 좌표별 차이값 배열(지리적 좌표계)
   const diffPoints = diffPointsToCentroid(geographicPoints, centroid);
-  console.log(`중심점과 도형 좌표별 차이값 배열(지리적 좌표계): ${diffPoints}`);
 
   // 리턴 좌표(직교좌표계)
   const movedPoints = diffPoints.map((point) => {
     return Cesium.Cartesian3.fromDegrees(point.diffLongitude - targetLongitude, point.diffLatitude - targetLatitude, point.diffHeight - targetHeight);
   });
-  console.log(`이동된 좌표(직교좌표계): ${movedPoints}`);
 
   return movedPoints;
 }
@@ -118,7 +128,6 @@ const diffPointsToCentroid = (points, centroid ) => {
 
 export const checkDistance = (point1, point2) => {
   const distance = Cesium.Cartesian3.distance(point1, point2); // 직선 거리
-  console.log(`두 지점 사이의 직선 거리: ${distance} 미터`);
 
   return Cesium.Cartesian3.distance(point1, point2);
 }
@@ -132,6 +141,5 @@ export const checkDistanceEllipsoid = (point1, point2) => {
   // 지구 타원체를 기준으로 두 지점 사이의 거리 계산
   const geodesic = new Cesium.EllipsoidGeodesic(startCartographic, endCartographic);
   const surfaceDistance = geodesic.surfaceDistance; // 곡면 거리 (미터 단위)
-  console.log(`두 지점 사이의 곡면 거리: ${surfaceDistance} 미터`);
   return surfaceDistance;
 }

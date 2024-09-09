@@ -3,10 +3,13 @@ import { Viewer, Entity, ScreenSpaceEventHandler, ScreenSpaceEvent, Camera, Scen
 import * as Cesium from 'cesium';
 import { DefaultContext } from '../context/DefaultContext';
 import { getCentroidCartesian, moveCentroidToCoordinate, checkDistance, checkDistanceEllipsoid } from '../utils/calculate';
+import { apiRequest } from '../utils/apiRequest';
 const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygon, setSelectedPolygon }) => {
   const { buttonsState } = useContext(DefaultContext);
   const viewerRef = useRef();
   const [centroidEntity, setCentroidEntity] = useState();
+  const [polygonHeight, setPolygonHeight] = useState();
+  console.log(buttonsState)
   // 초기위치 세팅로직
   useEffect(() => {
     let intervalId;
@@ -57,30 +60,17 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
   const toggleClickFunc = (event) => {
     const scene = viewerRef.current.cesiumElement.scene;
     const cartesian = scene.camera.pickEllipsoid(event.position, scene.globe.ellipsoid);
-    
+    console.log(cartesian)
     if (cartesian) {
       setClickedPositions((prev) => [...prev, cartesian]);
 
       // 예시: 폴리곤 생성 또는 업데이트
       if (clickedPositions.length >= 2) {
         setSelectedPolygon([...clickedPositions, cartesian]);
-        console.log('selectedPolygon')
-        console.log(selectedPolygon)
       }
     }
   }
-  
-  // 위치 좌표값 출력 버튼 클릭 이벤트
-  const showXYZFunc = (event) => {
-    const scene = viewerRef.current.cesiumElement.scene;
-    const cartesian = scene.camera.pickEllipsoid(event.position, scene.globe.ellipsoid);
-    
-    if (cartesian) {
-      console.log("XYZ Coordinates:", cartesian);
-    } else {
-      console.log("No positions clicked.");
-    }
-  }
+
 
   // 폴리곤 인덱스 출력 버튼 클릭 이벤트
   const showIndexFunc = (event) => {
@@ -119,9 +109,11 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
       const moveDistance = checkDistance(movePositions[0], movePositions[1]);
       const moveDistance1 = checkDistanceEllipsoid(movePositions[0], movePositions[1]);
 
-      console.log(`직선 이동 전 거리: ${distance} 미터, 이동 후 거리: ${moveDistance} 미터`);
-      console.log(`곡률 이동 전 거리: ${distance1} 미터, 이동 후 거리: ${moveDistance1} 미터`);
+      console.log(`직선 이동 전 거리: ${distance} 미터, 이동 후 거리: ${moveDistance} 미터, 비교 퍼센티지: ${((moveDistance - distance) / distance) * 100}%`);
+      console.log(`곡률 이동 전 거리: ${distance1} 미터, 이동 후 거리: ${moveDistance1} 미터`, `비교 퍼센티지: ${((moveDistance1 - distance1) / distance1) * 100}%`);
       
+
+
       setClickedPositions(movePositions);
       setSelectedPolygon(movePositions)
     } else {
@@ -132,33 +124,56 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
 
   // 3D로 변환 버튼 클릭 이벤트
   const make3DFunc = (event) => {
-    console.log("3D로 변환");
+    const scene = viewerRef.current.cesiumElement.scene;
+    const pickedObject = scene.pick(event.position);
+    if (Cesium.defined(pickedObject) && pickedObject.id && pickedObject.id.polygon) {
+      // 사용자에게 높이 받기
+      const targetHeight = prompt("Enter the height of the 3D object (meters):");
+
+      if (targetHeight === null || isNaN(targetHeight)) {
+        alert("Invalid height.");
+        return;
+      } 
+      setPolygonHeight(parseFloat(targetHeight));
+    
+    // 선택된 폴리곤에 3D 속성 적용
+    //pickedObject.id.polygon.extrudedHeight = parseFloat(targetHeight);  // 전체 높이를 적용할 수도 있음
+    //pickedObject.id.polygon.hierarchy = new Cesium.PolygonHierarchy(new3DPositions);  
+    //pickedObject.id.polygon.perPositionHeight = true;  // 각 좌표의 높이 적용
+
+      
+    } else {
+      alert("No polygon selected.");
+      return;
+    }
   }
 
   // DB 저장 버튼 클릭 이벤트
   const saveDBFunc = (event) => {
-    console.log('init')
     moveCameraToOrigin();
   }
 
   // DB 불러오기 버튼 클릭 이벤트
-  const recallDBFunc = (event) => {
-    console.log("DB에서 불러오기");
+  const recallDBFunc = async (event) => {
+    const response = await apiRequest('GET', 'http://localhost:8080/api/getPolygon');
+    console.log(response);
   }
 
 
- // 좌표 보여주기 엔티티를 추가하는 함수
+ // showXYZ 버튼 클릭 시 좌표 보여주기 엔티티를 추가하는 함수
  const renderXYZEntity = (position, index) => {
   const cartographic = Cesium.Cartographic.fromCartesian(position);
-  const latitude = Cesium.Math.toDegrees(cartographic.latitude);
   const longitude = Cesium.Math.toDegrees(cartographic.longitude);
+  const latitude = Cesium.Math.toDegrees(cartographic.latitude);
 
   return (
     <Entity
       key={index}
       position={position}
       label={{
-        text: `x: ${latitude.toFixed(4)}, y: ${longitude.toFixed(4)}`,
+        text: `x: ${longitude.toFixed(4)}, y: ${latitude.toFixed(4)}, z: ${cartographic.height.toFixed(4)}
+        ecef x: ${position.x.toFixed(4)}, ecef y: ${position.y.toFixed(4)}, ecef z: ${position.z.toFixed(4)}
+        `,
         font: '10pt monospace',
         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
         outlineWidth: 2,
@@ -170,11 +185,9 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
   ); 
 };
 
- // 좌표 보여주기 엔티티를 추가하는 함수
+ // showIndex 버튼 클릭 시 index를 보여주기 엔티티를 추가하는 함수
  const renderIndexEntity = (position, index) => {
   const cartographic = Cesium.Cartographic.fromCartesian(position);
-  const latitude = Cesium.Math.toDegrees(cartographic.latitude);
-  const longitude = Cesium.Math.toDegrees(cartographic.longitude);
 
   return (
     <Entity
@@ -238,16 +251,30 @@ const moveCameraToOrigin = () => {
           polygon={{
             hierarchy: selectedPolygon,
             material: Cesium.Color.YELLOW.withAlpha(0.5),
+            extrudedHeight: polygonHeight ? polygonHeight : undefined,
           }}
         />
       )}
       <Entity
           position={Cesium.Cartesian3.fromDegrees(0, 0, 0)}
+          point={{ pixelSize: 10, color: Cesium.Color.BLUE }}
+        />
+      <Entity
+          position={Cesium.Cartesian3.fromDegrees(90, 0, 0)}
           point={{ pixelSize: 10, color: Cesium.Color.RED }}
+        />
+        <Entity
+          position={Cesium.Cartesian3.fromDegrees(180, 0, 0)}
+          point={{ pixelSize: 10, color: Cesium.Color.PURPLE }}
+        />
+        <Entity
+          position={Cesium.Cartesian3.fromDegrees(270, 0, 0)}
+          point={{ pixelSize: 10, color: Cesium.Color.PINK }}
         />
       {/* {centroidEntity} */}
       {/* 클릭된 좌표들에 대한 위치와 텍스트 표시 */}
       {buttonsState.showXYZ && clickedPositions.map(renderXYZEntity)}
+      {buttonsState.showXYZ && renderXYZEntity(Cesium.Cartesian3.fromDegrees(0, 0, 0))}
 
       {/* 클릭된 좌표들에 대한 인덱스 표시 */}
       {buttonsState.showIndex && clickedPositions.map(renderIndexEntity)}

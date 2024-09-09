@@ -18,20 +18,19 @@ function App() {
   const [clickedPositions, setClickedPositions] = useState([]);
   const [selectedPolygon, setSelectedPolygon] = useState(null);
 
-  // return (
-  //   <DefaultProvider>
-  //     <div style={{display:'flex', justifyContent:'center', alignItems:'center', width:'100%', height:'100%'}} >
-  //       <ViewerComponent 
-  //         clickedPositions={clickedPositions} 
-  //         setClickedPositions={setClickedPositions}
-  //         selectedPolygon={selectedPolygon}
-  //         setSelectedPolygon={setSelectedPolygon}
-  //       />
-  //       <Buttons clearPositions={setClickedPositions} clearPolygon={setSelectedPolygon}/>
-  //   </div>
-  // </DefaultProvider>
-  // );
-  return <Rotation/>  
+  return (
+    <DefaultProvider>
+      <div style={{display:'flex', justifyContent:'center', alignItems:'center', width:'100%', height:'100%'}} >
+        <ViewerComponent 
+          clickedPositions={clickedPositions} 
+          setClickedPositions={setClickedPositions}
+          selectedPolygon={selectedPolygon}
+          setSelectedPolygon={setSelectedPolygon}
+        />
+        <Buttons clearPositions={setClickedPositions} clearPolygon={setSelectedPolygon}/>
+    </div>
+  </DefaultProvider>
+  );
 }
 
 export default App;

@@ -13,6 +13,7 @@
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@mui/material": "^6.0.0",
+    "axios": "^1.7.7",
     "cesium": "^1.120.0",
     "cesium-react": "^0.2.2",
     "react": "^18.3.1",
