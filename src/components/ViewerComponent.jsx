@@ -9,7 +9,6 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
   const viewerRef = useRef();
   const [centroidEntity, setCentroidEntity] = useState();
   const [polygonHeight, setPolygonHeight] = useState();
-  console.log(buttonsState)
   // 초기위치 세팅로직
   useEffect(() => {
     let intervalId;
@@ -60,7 +59,6 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
   const toggleClickFunc = (event) => {
     const scene = viewerRef.current.cesiumElement.scene;
     const cartesian = scene.camera.pickEllipsoid(event.position, scene.globe.ellipsoid);
-    console.log(cartesian)
     if (cartesian) {
       setClickedPositions((prev) => [...prev, cartesian]);
 
@@ -155,9 +153,71 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
 
   // DB 불러오기 버튼 클릭 이벤트
   const recallDBFunc = async (event) => {
-    const response = await apiRequest('GET', 'http://localhost:8080/api/getPolygon');
-    console.log(response);
+    // const response = await apiRequest('GET', 'http://localhost:8080/api/getPolygon');
+    // console.log(response);
+
+    // 포지션 생성
+    const bottomPositions = Cesium.Cartesian3.fromDegreesArrayHeights([
+      -72.0, 40.0, 0,
+      -70.0, 35.0, 0,
+      -75.0, 30.0, 0,
+  ]);
+  const upperPositions = Cesium.Cartesian3.fromDegreesArrayHeights([
+    -72.0, 40.0, 300000,
+    -70.0, 35.0, 300000,
+    -75.0, 30.0, 300000,
+]);
+
+  //polygon geometry 생성
+  const bottomPolygon = new Cesium.PolygonGeometry({
+    polygonHierarchy: new Cesium.PolygonHierarchy(bottomPositions),
+    perPositionHeight: true,
+    vertexFormat: Cesium.PerInstanceColorAppearance.VERTEX_FORMAT  // Appearance와 맞는 vertexFormat 사용
+
+});
+const upperPolygon = new Cesium.PolygonGeometry({
+  polygonHierarchy: new Cesium.PolygonHierarchy(upperPositions),
+  perPositionHeight: true,
+  vertexFormat: Cesium.PerInstanceColorAppearance.VERTEX_FORMAT  // Appearance와 맞는 vertexFormat 사용
+
+});
+  // geometry instance 생성
+  const bottomGeometryInstance = new Cesium.GeometryInstance({
+    geometry: bottomPolygon,
+    attributes: {
+      color:  Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.BLUE)  // 색상 설정
+    }
+});
+  console.log('test')
+  const sideGemoetryInstance =  bottomPositions.map((position, index) => {
+    const bottom = [position, bottomPositions[(index + 1) % bottomPositions.length]];
+    const upper = [upperPositions[index], upperPositions[(index + 1) % upperPositions.length]];
+    const side = [bottom[0], upper[0], upper[1], bottom[1], bottom[0]];
+
+    return new Cesium.GeometryInstance({
+      geometry: new Cesium.PolygonGeometry({
+      polygonHierarchy: new Cesium.PolygonHierarchy(side),
+     perPositionHeight: true,
+      vertexFormat: Cesium.PerInstanceColorAppearance.VERTEX_FORMAT  // Appearance와 맞는 vertexFormat 사용
+
+    }),
+      attributes: {
+        color: Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.RED)
+      }
+    });
+  })  
+const upperGeometryInstance = new Cesium.GeometryInstance({
+  geometry: upperPolygon,
+  attributes: {
+    color:  Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.BLUE)  // 색상 설정
   }
+});
+  // // viewer에 추가
+  viewerRef.current.cesiumElement.scene.primitives.add(new Cesium.Primitive({
+    geometryInstances: [bottomGeometryInstance, upperGeometryInstance, ...sideGemoetryInstance],
+    appearance: new Cesium.PerInstanceColorAppearance(),
+  }));
+}
 
 
  // showXYZ 버튼 클릭 시 좌표 보여주기 엔티티를 추가하는 함수
@@ -255,21 +315,30 @@ const moveCameraToOrigin = () => {
           }}
         />
       )}
+      
       <Entity
-          position={Cesium.Cartesian3.fromDegrees(0, 0, 0)}
+          position={Cesium.Cartesian3.fromDegrees(-72.0, 40.0, 0)}
           point={{ pixelSize: 10, color: Cesium.Color.BLUE }}
         />
       <Entity
-          position={Cesium.Cartesian3.fromDegrees(90, 0, 0)}
+          position={Cesium.Cartesian3.fromDegrees(-70.0, 35.0, 0)}
           point={{ pixelSize: 10, color: Cesium.Color.RED }}
         />
         <Entity
-          position={Cesium.Cartesian3.fromDegrees(180, 0, 0)}
+          position={Cesium.Cartesian3.fromDegrees( -75.0, 30.0, 0)}
           point={{ pixelSize: 10, color: Cesium.Color.PURPLE }}
         />
         <Entity
-          position={Cesium.Cartesian3.fromDegrees(270, 0, 0)}
+          position={Cesium.Cartesian3.fromDegrees(-72.0, 40.0, 300000)}
           point={{ pixelSize: 10, color: Cesium.Color.PINK }}
+        />
+        <Entity
+          position={Cesium.Cartesian3.fromDegrees(-70.0, 35.0, 300000)}
+          point={{ pixelSize: 10, color: Cesium.Color.YELLOW }}
+        />
+        <Entity
+          position={Cesium.Cartesian3.fromDegrees(-75.0, 30.0, 300000)}
+          point={{ pixelSize: 10, color: Cesium.Color.GREEN }}
         />
       {/* {centroidEntity} */}
       {/* 클릭된 좌표들에 대한 위치와 텍스트 표시 */}
