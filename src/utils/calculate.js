@@ -73,7 +73,7 @@ export function getCentroidGeograhpic(points) {
  * @param {*} cartesian : 직교좌표계 포인트
  * @returns Object(longitude, latitude, height) = 지리적좌표계
  */
-const convertCartesianToGeographic = (cartesian) => {
+export const convertCartesianToGeographic = (cartesian) => {
     // 라디안 값으로 리턴하니
     const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
     // 각도로 변환해줘야함
