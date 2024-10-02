@@ -1,5 +1,5 @@
 import { Viewer, Entity, PointGraphics, EntityDescription } from "resium";
-import { Cartesian3 } from "cesium";
+import { Cartesian3, Ion } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import StarShape from "./components/example/StarShape";
 import MouseClick from "./components/example/MouseClick";
@@ -13,6 +13,8 @@ import { DefaultProvider } from "./context/DefaultContext";
 import MovePolygon from "./components/example/MovePolygon";
 import Rotation from "./components/example/Rotation";
 // const position = Cartesian3.fromDegrees(127, 37.4, 100);
+
+Ion.defaultAccessToken = "your_access_token";
 
 function App() {
   const [clickedPositions, setClickedPositions] = useState([]);
