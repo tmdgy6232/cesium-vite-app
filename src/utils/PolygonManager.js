@@ -35,6 +35,7 @@ class PolygonManager {
     }
 
     makePolygon(positions) {
+      console.log('init')
         const polygon = this.viewer.entities.add({
             polygon: {
                 hierarchy: Cesium.Cartesian3.fromDegreesArrayHeights(positions),
@@ -130,29 +131,56 @@ class PolygonManager {
     }
   });
     // // viewer에 추가
-    this.viewer.scene.primitives.add(new Cesium.Primitive({
+    const primitiveData = new Cesium.Primitive({
       geometryInstances: [bottomGeometryInstance, upperGeometryInstance, ...sideGemoetryInstance],
       appearance: new Cesium.PerInstanceColorAppearance(),
       releaseGeometryInstances: false,
       // 이게 너무 중요하다!!!! 이거 없으면 지오메트리가 안보임
-    }));
+    });
+    // primitiveData.uniqueTest = 'test'
+    this.viewer.scene.primitives.add(primitiveData);
     }
 
     savePolygon() {
+        console.log('savePolygon')
+        console.log(this.viewer)
+        console.log(this.viewer.entities.values)
         const polygons = this.viewer.entities.values.map((entity) => {
             return entity.polygon.hierarchy.getValue().positions;
         });
-
+        
         // save to db
+        return polygons
     }
 
-    recallPolygon() {
-        // get from db
-        const polygons = [];
+    recallPolygon(polygons) {
 
-        polygons.forEach((positions) => {
-            this.makePolygon(positions);
-        });
+      const instanceArray = [];
+    
+      for(let i = 0; i < polygons.length; i++) {
+        const polygon =  new Cesium.PolygonGeometry({
+          polygonHierarchy: new Cesium.PolygonHierarchy(polygons[i].map((vertex) => Cesium.Cartesian3.fromDegrees(vertex.longitude, vertex.latitude, vertex.height))),
+          perPositionHeight: true,
+          vertexFormat: Cesium.PerInstanceColorAppearance.VERTEX_FORMAT  // Appearance와 맞는 vertexFormat 사용
+       });
+  
+       const geometryInstance = new Cesium.GeometryInstance({
+        geometry: polygon,
+        attributes: {
+          color:  Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.BLUE)  // 색상 설정
+        }
+      });
+      
+      instanceArray.push(geometryInstance);
+     }
+  
+     const primitiveData = new Cesium.Primitive({
+      geometryInstances: [...instanceArray],
+      appearance: new Cesium.PerInstanceColorAppearance(),
+      releaseGeometryInstances: false,
+      // 이게 너무 중요하다!!!! 이거 없으면 지오메트리가 안보임
+      });
+      this.viewer.scene.primitives.add(primitiveData);
     }
 }
 
