@@ -1,14 +1,19 @@
 import React, { useRef, useContext, useState, useEffect } from 'react';
-import { Viewer, Entity, ScreenSpaceEventHandler, ScreenSpaceEvent, Camera, Scene } from 'resium';
+import { Viewer, Entity, ScreenSpaceEventHandler, ScreenSpaceEvent, Camera, Scene, pick, Cesium3DTileset } from 'resium';
 import * as Cesium from 'cesium';
 import { DefaultContext } from '../context/DefaultContext';
-import { getCentroidCartesian, moveCentroidToCoordinate, checkDistance, checkDistanceEllipsoid } from '../utils/calculate';
+import { getCentroidCartesian, moveCentroidToCoordinate, checkDistance, checkDistanceEllipsoid, convertCartesianToGeographic } from '../utils/calculate';
 import { apiRequest } from '../utils/apiRequest';
+import CesiumManager from '../utils/CesiumManager';
+import PolygonManager from '../utils/PolygonManager';
 const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygon, setSelectedPolygon }) => {
   const { buttonsState } = useContext(DefaultContext);
   const viewerRef = useRef();
   const [centroidEntity, setCentroidEntity] = useState();
-  const [polygonHeight, setPolygonHeight] = useState();
+  const [polygonManager, setPolygonManager] = useState();
+  const [cesiumManager, setCesiumManager] = useState();
+  const [tileset, setTileset] = useState(null);
+
   // 초기위치 세팅로직
   useEffect(() => {
     let intervalId;
@@ -18,14 +23,16 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
   
       if (viewer) {
         clearInterval(intervalId);
-          viewer.scene.camera.setView({
-            destination: Cesium.Cartesian3.fromDegrees(2435, -4638.142451189, 3000000),
-            orientation: {
-              heading: Cesium.Math.toRadians(0),
-              pitch: Cesium.Math.toRadians(-90),
-              roll: 0.0
-            }
-          });
+          // viewer.scene.camera.setView({
+          //   destination: Cesium.Cartesian3.fromDegrees(2435, -4638.142451189, 3000000),
+          //   orientation: {
+          //     heading: Cesium.Math.toRadians(0),
+          //     pitch: Cesium.Math.toRadians(-90),
+          //     roll: 0.0
+          //   }
+          // });
+          setCesiumManager(new CesiumManager(viewer));
+          setPolygonManager(new PolygonManager(viewer));
       }
     };
   
@@ -34,7 +41,31 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
   
     return () => clearInterval(intervalId);
   }, []);
+
+  useEffect(() => {
+    if(cesiumManager) {
+      cesiumManager.moveCamera();
+    }
+  }, [cesiumManager])
   
+  /** 3d tiles asset 가져오기 예제 */
+  // useEffect(() => {
+  //   const loadTileset = async () => {
+  //     try {
+  //       const tileset = await Cesium.Cesium3DTileset.fromIonAssetId(2464651); // Cesium ion에서 에셋 ID로 타일셋 로드
+  //       setTileset(tileset);
+  //       const viewer = cesiumManager.getViewer();
+  //       console.log(tileset)
+  //       viewer.scene.primitives.add(tileset); // 타일셋을 씬에 추가
+  //       viewer.zoomTo(tileset); // 타일셋으로 카메라 이동
+  //     } catch (error) {
+  //       console.error("타일셋 로드 오류:", error);
+  //     }
+  //   };
+
+  //   loadTileset();
+  // }, [])
+
   const handleLeftClick = (event) => {
     
     if(buttonsState.toggle) {
@@ -50,7 +81,8 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
     } else if (buttonsState.make3D) {
       make3DFunc(event);
     } else if (buttonsState.recallDB) {
-      recallDBFunc(event);
+      // recallDBFunc(event);
+      recallDBFunc2(event);
     }
   };
 
@@ -122,6 +154,11 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
 
   // 3D로 변환 버튼 클릭 이벤트
   const make3DFunc = (event) => {
+
+    if(!polygonManager) {
+      console.log('no polygonManager');
+      return;
+    }
     const scene = viewerRef.current.cesiumElement.scene;
     const pickedObject = scene.pick(event.position);
     if (Cesium.defined(pickedObject) && pickedObject.id && pickedObject.id.polygon) {
@@ -132,13 +169,8 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
         alert("Invalid height.");
         return;
       } 
-      setPolygonHeight(parseFloat(targetHeight));
-    
-    // 선택된 폴리곤에 3D 속성 적용
-    //pickedObject.id.polygon.extrudedHeight = parseFloat(targetHeight);  // 전체 높이를 적용할 수도 있음
-    //pickedObject.id.polygon.hierarchy = new Cesium.PolygonHierarchy(new3DPositions);  
-    //pickedObject.id.polygon.perPositionHeight = true;  // 각 좌표의 높이 적용
-
+      // setPolygonHeight(parseFloat(targetHeight));
+      polygonManager.convert3Dpolygon(pickedObject, parseFloat(targetHeight));
       
     } else {
       alert("No polygon selected.");
@@ -146,78 +178,170 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
     }
   }
 
-  // DB 저장 버튼 클릭 이벤트
-  const saveDBFunc = (event) => {
-    moveCameraToOrigin();
-  }
+  // // DB 저장 버튼 클릭 이벤트
+  // const saveDBFunc = (event) => {
+  //   const scene = viewerRef.current.cesiumElement.scene;
+  //   const pickedObject = scene.pick(event.position);
+ 
+  // // Matrix는 primitives의 geometry를 변환시키는데(이동, 회전, 스케일) 사용됨
+  // console.log(cesiumManager.viewer.scene.primitives)
+  // const primitive = cesiumManager.viewer.scene.primitives.get(1);
+  
+  // // matrix는 현재 위치에서의 변환이므로, 현재 위치값에서 계산 필요
+  // // 현재 객체의 위치 가져오기
+  // const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+  // console.log(cartographic)
+  // const currentLongitude = Cesium.Math.toDegrees(cartographic.longitude);
+  // const currentLatitude = Cesium.Math.toDegrees(cartographic.latitude);
+  // const currentHeight = cartographic.height;
 
-  // DB 불러오기 버튼 클릭 이벤트
+  // console.log('현재 위치:', currentLongitude, currentLatitude, currentHeight);
+
+  // // 0, 0으로 이동할 벡터 계산
+  // const translation = Cesium.Cartesian3.fromDegrees(
+  //     0 - currentLongitude, // 경도 차이
+  //     0 - currentLatitude,  // 위도 차이
+  //     0 - currentHeight     // 높이 차이 (여기서는 0으로 설정)
+  // );
+
+  // // 모델 행렬에 이동 변환 적용
+  // const translationMatrix = Cesium.Matrix4.fromTranslation(translation);
+  // Cesium.Matrix4.multiply(primitive.modelMatrix, translationMatrix, primitive.modelMatrix);
+  // // primitive.modelMatrix = translationMatrix;
+    
+  // }
+
+  // // DB 불러오기 버튼 클릭 이벤트
   const recallDBFunc = async (event) => {
-    // const response = await apiRequest('GET', 'http://localhost:8080/api/getPolygon');
-    // console.log(response);
+   // moveCameraToOrigin();
+   const viewer = cesiumManager.getViewer();
+    const data = await apiRequest('GET', 'http://localhost:8080/api/getPolygon')
 
-    // 포지션 생성
-    const bottomPositions = Cesium.Cartesian3.fromDegreesArrayHeights([
-      -72.0, 40.0, 0,
-      -70.0, 35.0, 0,
-      -75.0, 30.0, 0,
-  ]);
-  const upperPositions = Cesium.Cartesian3.fromDegreesArrayHeights([
-    -72.0, 40.0, 300000,
-    -70.0, 35.0, 300000,
-    -75.0, 30.0, 300000,
-]);
-
-  //polygon geometry 생성
-  const bottomPolygon = new Cesium.PolygonGeometry({
-    polygonHierarchy: new Cesium.PolygonHierarchy(bottomPositions),
-    perPositionHeight: true,
-    vertexFormat: Cesium.PerInstanceColorAppearance.VERTEX_FORMAT  // Appearance와 맞는 vertexFormat 사용
-
-});
-const upperPolygon = new Cesium.PolygonGeometry({
-  polygonHierarchy: new Cesium.PolygonHierarchy(upperPositions),
-  perPositionHeight: true,
-  vertexFormat: Cesium.PerInstanceColorAppearance.VERTEX_FORMAT  // Appearance와 맞는 vertexFormat 사용
-
-});
-  // geometry instance 생성
-  const bottomGeometryInstance = new Cesium.GeometryInstance({
-    geometry: bottomPolygon,
-    attributes: {
-      color:  Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.BLUE)  // 색상 설정
-    }
-});
-  console.log('test')
-  const sideGemoetryInstance =  bottomPositions.map((position, index) => {
-    const bottom = [position, bottomPositions[(index + 1) % bottomPositions.length]];
-    const upper = [upperPositions[index], upperPositions[(index + 1) % upperPositions.length]];
-    const side = [bottom[0], upper[0], upper[1], bottom[1], bottom[0]];
-
-    return new Cesium.GeometryInstance({
-      geometry: new Cesium.PolygonGeometry({
-      polygonHierarchy: new Cesium.PolygonHierarchy(side),
-     perPositionHeight: true,
-      vertexFormat: Cesium.PerInstanceColorAppearance.VERTEX_FORMAT  // Appearance와 맞는 vertexFormat 사용
-
-    }),
-      attributes: {
-        color: Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.RED)
-      }
-    });
-  })  
-const upperGeometryInstance = new Cesium.GeometryInstance({
-  geometry: upperPolygon,
-  attributes: {
-    color:  Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.BLUE)  // 색상 설정
+    const polygons = JSON.parse(data.data).geometry;
+    
+    polygonManager.recallPolygon(polygons);
   }
-});
-  // // viewer에 추가
-  viewerRef.current.cesiumElement.scene.primitives.add(new Cesium.Primitive({
-    geometryInstances: [bottomGeometryInstance, upperGeometryInstance, ...sideGemoetryInstance],
-    appearance: new Cesium.PerInstanceColorAppearance(),
-  }));
-}
+ // DB 불러오기 버튼 클릭 이벤트(GeoJson, geometry로 저장된 데이터 불러오기)
+  const recallDBFunc2 = async (event) => {
+    // moveCameraToOrigin();
+    const viewer = cesiumManager.getViewer();
+    console.log('recall data before0')
+     const data = await apiRequest('GET', 'http://localhost:8080/api/getPolygonGeoJson')
+     console.log('recall data before1')
+     const polygons = data.data.map(d => JSON.parse(d.geometry));
+     console.log('recall data after')
+     
+     polygonManager.recallPolygonGeojson(polygons);
+   }
+
+  // db 저장 로직
+  const saveDBFunc = (event) => {
+    const viewer = cesiumManager.viewer;
+    const scene = viewer.scene;
+
+    // 마우스 위치에서 Primitive 객체 선택
+    const pickedObject = scene.pick(event.position);
+    // const polygons = polygonManager.savePolygon();
+
+    // console.log(polygons)
+    if(Cesium.defined(pickedObject)){
+      // 가져온 객체의 geometry에서 점들의 데이터 가져오기
+      const geometryInstances = pickedObject.primitive.geometryInstances;
+
+      // 지리적좌표계 polygon geometry 데이터
+      const geometryPolygon = [];
+
+      // 지리적 좌표계 정점 데이터
+      const geometryVertexes = [];
+      // 면들에서 점 1차원 배열로 생성
+      const vertaxes = geometryInstances.flatMap((geometryInstance) => {
+        // 지리적 좌표계로 변환
+        const polygonData = [];
+        geometryInstance.geometry._polygonHierarchy.positions.map((position) => { 
+          const geographicData = convertCartesianToGeographic(position); 
+          geometryVertexes.push(geographicData);
+          polygonData.push(geographicData);
+        });
+        geometryPolygon.push(polygonData);
+        return geometryInstance.geometry._polygonHierarchy.positions;
+      });  
+
+      // 점 중복값 제거
+      // set은 reference를 비교하므로, 중복값 제거를 위해 새로운 배열 생성
+      const geoUniqueVertices = [];
+      geometryPolygon.map((vertex) => {
+        vertex.map((v) => {
+        if(!geoUniqueVertices.some((d) => d.longitude === v.longitude && d.latitude === v.latitude && d.height === v.height)) {
+          geoUniqueVertices.push(v);
+        }
+        })
+      })
+      // 이거 구조 변경해야된다.
+          
+      // geoJson type converting
+      const geoData = geometryPolygon.map((p) => {
+    
+        return {
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [p.map((d) => [d.longitude, d.latitude, d.height])]
+          },
+          properties: {
+            name: 'Example Polygon'
+          }
+        }
+      });
+
+      console.log(geoData)
+      const data = {
+        name: 'test',
+        vertices: geoUniqueVertices,
+        data: geoData
+      };
+
+      // DB에 저장
+      const res = apiRequest('POST', 'http://localhost:8080/api/saveModel', data)
+      console.log(res);
+      if(res){
+        alert('저장 완료');
+      }
+      /** 
+       * 중심점 계산해서 원하는 위치로 옮기는 코드
+       * 문제1. 방위각 계산이 포함되어 있지 않아 지구 어디를 보내더라도 그 각도 그 방향 그대로 이동함.
+       */
+      // const center = Cesium.BoundingSphere.fromPoints(vertaxes).center;
+
+      // viewer.entities.add({
+      //   position: center,
+      //   point: {
+      //     pixelSize: 10,
+      //     color: Cesium.Color.BLACK
+      //   }
+      // });
+
+      // // 원하는 위치 (지리적 좌표계)
+      // const newCenter = new Cesium.Cartesian3.fromDegrees(0,0,150000);
+      // const defference = Cesium.Cartesian3.subtract(newCenter, center, new Cesium.Cartesian3());
+
+      // const newVertaxces = vertaxes.map((vertax) => {
+      //   return Cesium.Cartesian3.add(vertax, defference, new Cesium.Cartesian3());
+      // });
+     
+      // newVertaxces.forEach((vertax) => {
+      //   viewer.entities.add({
+      //     position: vertax,
+      //     point: {
+      //       pixelSize: 10,
+      //       color: Cesium.Color.RED
+      //     }
+      //   });
+      // });
+
+    } else {
+      alert('No object selected.');
+    }
+  }
 
 
  // showXYZ 버튼 클릭 시 좌표 보여주기 엔티티를 추가하는 함수
@@ -305,41 +429,18 @@ const moveCameraToOrigin = () => {
           point={{ pixelSize: 10, color: Cesium.Color.RED }}
         />
       ))}
-
       {selectedPolygon && (
         <Entity
           polygon={{
             hierarchy: selectedPolygon,
-            material: Cesium.Color.YELLOW.withAlpha(0.5),
-            extrudedHeight: polygonHeight ? polygonHeight : undefined,
+            material: Cesium.Color.YELLOW.withAlpha(0.5)
           }}
         />
       )}
-      
-      <Entity
-          position={Cesium.Cartesian3.fromDegrees(-72.0, 40.0, 0)}
-          point={{ pixelSize: 10, color: Cesium.Color.BLUE }}
-        />
-      <Entity
-          position={Cesium.Cartesian3.fromDegrees(-70.0, 35.0, 0)}
+      {/* <Entity
+          position={Cesium.Cartesian3.fromDegrees(-72.0, 41.7, -20000)}
           point={{ pixelSize: 10, color: Cesium.Color.RED }}
-        />
-        <Entity
-          position={Cesium.Cartesian3.fromDegrees( -75.0, 30.0, 0)}
-          point={{ pixelSize: 10, color: Cesium.Color.PURPLE }}
-        />
-        <Entity
-          position={Cesium.Cartesian3.fromDegrees(-72.0, 40.0, 300000)}
-          point={{ pixelSize: 10, color: Cesium.Color.PINK }}
-        />
-        <Entity
-          position={Cesium.Cartesian3.fromDegrees(-70.0, 35.0, 300000)}
-          point={{ pixelSize: 10, color: Cesium.Color.YELLOW }}
-        />
-        <Entity
-          position={Cesium.Cartesian3.fromDegrees(-75.0, 30.0, 300000)}
-          point={{ pixelSize: 10, color: Cesium.Color.GREEN }}
-        />
+      />  */}
       {/* {centroidEntity} */}
       {/* 클릭된 좌표들에 대한 위치와 텍스트 표시 */}
       {buttonsState.showXYZ && clickedPositions.map(renderXYZEntity)}
@@ -347,6 +448,7 @@ const moveCameraToOrigin = () => {
 
       {/* 클릭된 좌표들에 대한 인덱스 표시 */}
       {buttonsState.showIndex && clickedPositions.map(renderIndexEntity)}
+      <Cesium3DTileset url="../assets/MetadataGranularities/tileset.json" />
     </Viewer>
   );
 };

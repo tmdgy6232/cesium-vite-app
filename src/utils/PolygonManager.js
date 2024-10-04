@@ -182,6 +182,37 @@ class PolygonManager {
       });
       this.viewer.scene.primitives.add(primitiveData);
     }
+
+    recallPolygonGeojson(polygons) {
+
+      const instanceArray = [];
+    
+      for(let i = 0; i < polygons.length; i++) {
+      
+        const coordinates = polygons[i].coordinates[0].map((vertex) => new Cesium.Cartesian3.fromDegrees(...vertex));
+        const polygon =  new Cesium.PolygonGeometry({
+          polygonHierarchy: new Cesium.PolygonHierarchy([...coordinates]), 
+          perPositionHeight: true,
+          vertexFormat: Cesium.PerInstanceColorAppearance.VERTEX_FORMAT  // Appearance와 맞는 vertexFormat 사용
+       });
+       const geometryInstance = new Cesium.GeometryInstance({
+        geometry: polygon,
+        attributes: {
+          color:  Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.BLUE)  // 색상 설정
+        }
+      });
+      
+      instanceArray.push(geometryInstance);
+     }
+  
+     const primitiveData = new Cesium.Primitive({
+      geometryInstances: [...instanceArray],
+      appearance: new Cesium.PerInstanceColorAppearance(),
+      releaseGeometryInstances: false,
+      // 이게 너무 중요하다!!!! 이거 없으면 지오메트리가 안보임
+      });
+      this.viewer.scene.primitives.add(primitiveData);
+    }
 }
 
 export default PolygonManager;
