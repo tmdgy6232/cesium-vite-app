@@ -12,7 +12,8 @@ export const DefaultProvider = ({ children }) => {
     movePolygon: false,
     saveDB: false,
     recallDB: false,
-    moveCamera: false,        
+    moveCamera: false,     
+    test: false   
   }
   const [buttonsState, setButtonState] = useState(defaultState);
 
