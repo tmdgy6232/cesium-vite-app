@@ -143,3 +143,22 @@ export const checkDistanceEllipsoid = (point1, point2) => {
   const surfaceDistance = geodesic.surfaceDistance; // 곡면 거리 (미터 단위)
   return surfaceDistance;
 }
+
+/**
+ * function : catesian to Mercator(EPSG:3857)
+ * @param {*} cartesian : Catesian3
+ * @returns Object(x, y) = Mercator
+ */
+export const convertCartesianToMercator = (cartesian) => {
+  const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+  const mercator = Cesium.WebMercatorProjection.project(cartographic);
+  return { x: mercator.x, y: mercator.y };
+}
+
+/**
+ * function : Mercator(EPSG:3857) to catesian
+ */
+export const convertMercatorToCartesian = (mercator) => {
+  const cartographic = Cesium.WebMercatorProjection.unproject(mercator);
+  return Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, cartographic.height);
+}
