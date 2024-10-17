@@ -73,12 +73,14 @@ class PolygonManager {
             console.log('this is not a polygon');
         }
         
-    const bottomPositions = pickPolygon.id.polygon.hierarchy.getValue().positions;
+    let bottomPositions = pickPolygon.id.polygon.hierarchy.getValue().positions;
+    bottomPositions = [...bottomPositions, bottomPositions[0]];
 
-    const upperPositions = bottomPositions.map((position) => {
+    let upperPositions = bottomPositions.map((position) => {
         const { longitude, latitude, height } = convertCartesianToGeographic(position);
         return Cesium.Cartesian3.fromDegrees(longitude, latitude, targetHeight);
     });
+    upperPositions = [...upperPositions, upperPositions[0]];
 //     const upperPositions = Cesium.Cartesian3.fromDegreesArrayHeights([
 //       -72.0, 40.0, 300000,
 //       -70.0, 35.0, 300000,
@@ -105,7 +107,7 @@ class PolygonManager {
         color:  Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.BLUE)  // 색상 설정
       }
   });
-    const sideGemoetryInstance =  bottomPositions.map((position, index) => {
+    const sideGemoetryInstance =  bottomPositions.slice(0,-1).map((position, index) => {
       const bottom = [position, bottomPositions[(index + 1) % bottomPositions.length]];
       const upper = [upperPositions[index], upperPositions[(index + 1) % upperPositions.length]];
       const side = [bottom[0], upper[0], upper[1], bottom[1], bottom[0]];
@@ -124,6 +126,8 @@ class PolygonManager {
         }
       });
     })  
+
+    console.log(sideGemoetryInstance.length)
   const upperGeometryInstance = new Cesium.GeometryInstance({
     geometry: upperPolygon,
     attributes: {
@@ -142,9 +146,6 @@ class PolygonManager {
     }
 
     savePolygon() {
-        console.log('savePolygon')
-        console.log(this.viewer)
-        console.log(this.viewer.entities.values)
         const polygons = this.viewer.entities.values.map((entity) => {
             return entity.polygon.hierarchy.getValue().positions;
         });

@@ -34,8 +34,14 @@ const entityClear = () => {
       case 'recallDB':
         activeButtons('recallDB');
         break;
+      case 'recallListDB':
+        activeButtons('recallListDB');
+      break;
       case 'moveCamera':
       activeButtons('moveCamera');
+      break;
+      case 'distance':
+      activeButtons('distance');
       break;
       case 'test':
       activeButtons('test');
@@ -54,7 +60,9 @@ const entityClear = () => {
       <Button color={buttonsState.saveDB ? 'primary' : 'default'} onClick={() => handleButtonClick('saveDB')}>Save to DB</Button>
       <Button color={buttonsState.movePolygon ? 'primary' : 'default'} onClick={() => handleButtonClick('movePolygon')}>Shift to 0,0</Button>
       <Button color={buttonsState.recallDB ? 'primary' : 'default'} onClick={() => handleButtonClick('recallDB')}>Recall Star from DB</Button>
+      <Button color={buttonsState.recallListDB ? 'primary' : 'default'} onClick={() => handleButtonClick('recallListDB')}>RecallList Star from DB</Button>
       <Button color={buttonsState.moveCamera ? 'primary' : 'default'} onClick={() => handleButtonClick('moveCamera')}>Move camera 0,0</Button>
+      <Button color={buttonsState.moveCamera ? 'primary' : 'default'} onClick={() => handleButtonClick('distance')}>Show distance</Button>
       <Button color={buttonsState.test ? 'primary' : 'default'} onClick={() => handleButtonClick('test')}>test</Button>
       </div>
     </div>

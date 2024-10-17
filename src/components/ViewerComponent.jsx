@@ -83,7 +83,17 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
     } else if (buttonsState.recallDB) {
       // recallDBFunc(event);
       recallDBFunc2(event);
+    } else if (buttonsState.recallListDB) {
+      // recallDBFunc(event);
+      recallListDBFunc(event);
+    } else if (buttonsState.test) {
+      // recallDBFunc(event);
+      testFunc(event);
     }
+   else if (buttonsState.distance) {
+    // recallDBFunc(event);
+    distanceFunc(event);
+  }
   };
 
 
@@ -225,14 +235,26 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
   const recallDBFunc2 = async (event) => {
     // moveCameraToOrigin();
     const viewer = cesiumManager.getViewer();
-    console.log('recall data before0')
-     const data = await apiRequest('GET', 'http://localhost:8080/api/getPolygonGeoJson')
-     console.log('recall data before1')
+     const data = await apiRequest('GET', 'http://localhost:8080/api/getPolygonGeoJsonList')
      const polygons = data.data.map(d => JSON.parse(d.geometry));
-     console.log('recall data after')
-     
+     console.log(polygons)
      polygonManager.recallPolygonGeojson(polygons);
    }
+
+
+  // DB 불러오기 버튼 클릭 이벤트(GeoJson, geometry로 저장된 데이터 불러오기)
+  const recallListDBFunc = async (event) => {
+  // moveCameraToOrigin();
+  const viewer = cesiumManager.getViewer();
+   const result = await apiRequest('GET', 'http://localhost:8080/api/getPolygonGeoJsonList')
+
+   const dataList = result.data;
+
+   for(let i = 0; i < dataList.length; i++) {
+    const polygons = JSON.parse(dataList[i].data.value).map(d => JSON.parse(d.geometry));
+    polygonManager.recallPolygonGeojson(polygons); 
+   }
+ }
 
   // db 저장 로직
   const saveDBFunc = (event) => {
@@ -302,7 +324,6 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
 
       // DB에 저장
       const res = apiRequest('POST', 'http://localhost:8080/api/saveModel', data)
-      console.log(res);
       if(res){
         alert('저장 완료');
       }
@@ -343,6 +364,49 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
     }
   }
 
+  //distance func
+  const distanceFunc = (event) => {
+    const viewer = cesiumManager.getViewer();
+
+    // 클릭된 위치의 객체를 가져옴
+    var pickedObject = viewer.scene.pick(event.position);
+
+    // 객체가 선택되었는지 확인
+    if (Cesium.defined(pickedObject)) {
+        // 선택된 객체가 primitives instance인지 확인
+        if (pickedObject.primitive) {
+          // primitives instance라면 꼭짓점들의 거리 계산
+            console.log("Picked object is a primitive instance.");
+
+        } else {
+            console.log("Picked object is not a primitive instance.");
+        }
+    } else {
+        console.log("No object picked.");
+    }
+
+
+  }
+
+  // test func
+  const testFunc = (event) => {
+    const viewer = cesiumManager.getViewer();
+    const scene = viewer.scene;
+    const ecefPosition = scene.camera.pickEllipsoid(event.position, scene.globe.ellipsoid);
+
+    console.log(ecefPosition);
+    
+    //const ecefPosition = new Cesium.Cartesian3(6378137.0, 0.0, 0.0); // Example ECEF coordinates
+    const cartographic = Cesium.Ellipsoid.WGS84.cartesianToCartographic(ecefPosition);
+
+    if (cartographic) {
+        const webMercatorProjection = new Cesium.WebMercatorProjection();
+        const mercatorPosition = webMercatorProjection.project(cartographic);
+        console.log(mercatorPosition);
+        console.log('Web Mercator X:', mercatorPosition.x);
+        console.log('Web Mercator Y:', mercatorPosition.y);
+    }
+  } 
 
  // showXYZ 버튼 클릭 시 좌표 보여주기 엔티티를 추가하는 함수
  const renderXYZEntity = (position, index) => {
@@ -408,16 +472,16 @@ const moveCameraToOrigin = () => {
     <Viewer ref={viewerRef} 
     full={false} 
     style={{width:'100%', height:'80vh'}}
-    fullscreenButton={false}
-    navigationHelpButton={false}
-    homeButton={false}
-    sceneModePicker={false}
-    timeline={false}
-    animation={false}
-    geocoder={false}
-    vrButton={false}
-    baseLayerPicker={false}
-    infoBox={false}
+    // fullscreenButton={false}
+    // navigationHelpButton={false}
+    // homeButton={false}
+    // sceneModePicker={false}
+    // timeline={false}
+    // animation={false}
+    // geocoder={false}
+    // vrButton={false}
+    // baseLayerPicker={false}
+    // infoBox={false}
     >
       <ScreenSpaceEventHandler>
         <ScreenSpaceEvent action={handleLeftClick} type={Cesium.ScreenSpaceEventType.LEFT_CLICK} />
