@@ -14,7 +14,10 @@ import MovePolygon from "./components/example/MovePolygon";
 import Rotation from "./components/example/Rotation";
 // const position = Cartesian3.fromDegrees(127, 37.4, 100);
 
-Ion.defaultAccessToken = "your_access_token";
+import ThreeCompoenet from "./components/ThreeCompoenet";
+import ThreeCesiumComponent from "./components/ThreeCesiumComponent";
+
+Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyYTI4M2Q1NC0yZDY4LTQ3ODctYjYxNS1kZTg3ZjQxZTYwMjAiLCJpZCI6MjM2MDg2LCJpYXQiOjE3MjQyMjk2ODJ9.Nm5KyDADkROONx84HrbNrKFt0kJpA8y5rPwIow2EMbc";
 
 function App() {
   const [clickedPositions, setClickedPositions] = useState([]);
@@ -30,6 +33,9 @@ function App() {
           setSelectedPolygon={setSelectedPolygon}
         />
         <Buttons clearPositions={setClickedPositions} clearPolygon={setSelectedPolygon}/>
+        {/* <ThreeCompoenet></ThreeCompoenet> */}
+        {/* <ThreeCesiumComponent/> */}
+        
     </div>
   </DefaultProvider>
   );
