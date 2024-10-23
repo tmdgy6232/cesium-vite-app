@@ -1,7 +1,7 @@
 import React, {useContext} from 'react';
 import Button from './UI/Button';
 import { DefaultContext } from '../context/DefaultContext';
-const Buttons = ({ clearPositions, clearPolygon}) => {
+const Buttons = ({ clearPositions, clearPolygon, clearDistanceLines}) => {
 
   const {buttonsState, activeButtons} = useContext(DefaultContext);
   // 요소 초기화
@@ -41,6 +41,7 @@ const entityClear = () => {
       activeButtons('moveCamera');
       break;
       case 'distance':
+      if(buttonsState.distance) clearDistanceLines();
       activeButtons('distance');
       break;
       case 'test':
@@ -62,7 +63,7 @@ const entityClear = () => {
       <Button color={buttonsState.recallDB ? 'primary' : 'default'} onClick={() => handleButtonClick('recallDB')}>Recall Star from DB</Button>
       <Button color={buttonsState.recallListDB ? 'primary' : 'default'} onClick={() => handleButtonClick('recallListDB')}>RecallList Star from DB</Button>
       <Button color={buttonsState.moveCamera ? 'primary' : 'default'} onClick={() => handleButtonClick('moveCamera')}>Move camera 0,0</Button>
-      <Button color={buttonsState.moveCamera ? 'primary' : 'default'} onClick={() => handleButtonClick('distance')}>Show distance</Button>
+      <Button color={buttonsState.distance ? 'primary' : 'default'} onClick={() => handleButtonClick('distance')}>Check distance</Button>
       <Button color={buttonsState.test ? 'primary' : 'default'} onClick={() => handleButtonClick('test')}>test</Button>
       </div>
     </div>

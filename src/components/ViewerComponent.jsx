@@ -1,4 +1,4 @@
-import React, { useRef, useContext, useState, useEffect } from 'react';
+import React, { useRef, useContext, useState, useEffect, useReducer } from 'react';
 import { Viewer, Entity, ScreenSpaceEventHandler, ScreenSpaceEvent, Camera, Scene, pick, Cesium3DTileset } from 'resium';
 import * as Cesium from 'cesium';
 import { DefaultContext } from '../context/DefaultContext';
@@ -6,7 +6,11 @@ import { getCentroidCartesian, moveCentroidToCoordinate, checkDistance, checkDis
 import { apiRequest } from '../utils/apiRequest';
 import CesiumManager from '../utils/CesiumManager';
 import PolygonManager from '../utils/PolygonManager';
-const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygon, setSelectedPolygon }) => {
+
+
+
+
+const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygon, setSelectedPolygon, distanceState, dispatch }) => {
   const { buttonsState } = useContext(DefaultContext);
   const viewerRef = useRef();
   const [centroidEntity, setCentroidEntity] = useState();
@@ -48,24 +52,6 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
     }
   }, [cesiumManager])
   
-  /** 3d tiles asset 가져오기 예제 */
-  // useEffect(() => {
-  //   const loadTileset = async () => {
-  //     try {
-  //       const tileset = await Cesium.Cesium3DTileset.fromIonAssetId(2464651); // Cesium ion에서 에셋 ID로 타일셋 로드
-  //       setTileset(tileset);
-  //       const viewer = cesiumManager.getViewer();
-  //       console.log(tileset)
-  //       viewer.scene.primitives.add(tileset); // 타일셋을 씬에 추가
-  //       viewer.zoomTo(tileset); // 타일셋으로 카메라 이동
-  //     } catch (error) {
-  //       console.error("타일셋 로드 오류:", error);
-  //     }
-  //   };
-
-  //   loadTileset();
-  // }, [])
-
   const handleLeftClick = (event) => {
     
     if(buttonsState.toggle) {
@@ -90,12 +76,14 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
       // recallDBFunc(event);
       testFunc(event);
     }
-   else if (buttonsState.distance) {
-    // recallDBFunc(event);
-    distanceFunc(event);
-  }
+      else if (buttonsState.distance) {
+      // recallDBFunc(event);
+      distanceFunc(event);
+    }
+
   };
 
+  
 
   // 좌표찍기 버튼 클릭 이벤트
   const toggleClickFunc = (event) => {
@@ -188,38 +176,6 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
     }
   }
 
-  // // DB 저장 버튼 클릭 이벤트
-  // const saveDBFunc = (event) => {
-  //   const scene = viewerRef.current.cesiumElement.scene;
-  //   const pickedObject = scene.pick(event.position);
- 
-  // // Matrix는 primitives의 geometry를 변환시키는데(이동, 회전, 스케일) 사용됨
-  // console.log(cesiumManager.viewer.scene.primitives)
-  // const primitive = cesiumManager.viewer.scene.primitives.get(1);
-  
-  // // matrix는 현재 위치에서의 변환이므로, 현재 위치값에서 계산 필요
-  // // 현재 객체의 위치 가져오기
-  // const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
-  // console.log(cartographic)
-  // const currentLongitude = Cesium.Math.toDegrees(cartographic.longitude);
-  // const currentLatitude = Cesium.Math.toDegrees(cartographic.latitude);
-  // const currentHeight = cartographic.height;
-
-  // console.log('현재 위치:', currentLongitude, currentLatitude, currentHeight);
-
-  // // 0, 0으로 이동할 벡터 계산
-  // const translation = Cesium.Cartesian3.fromDegrees(
-  //     0 - currentLongitude, // 경도 차이
-  //     0 - currentLatitude,  // 위도 차이
-  //     0 - currentHeight     // 높이 차이 (여기서는 0으로 설정)
-  // );
-
-  // // 모델 행렬에 이동 변환 적용
-  // const translationMatrix = Cesium.Matrix4.fromTranslation(translation);
-  // Cesium.Matrix4.multiply(primitive.modelMatrix, translationMatrix, primitive.modelMatrix);
-  // // primitive.modelMatrix = translationMatrix;
-    
-  // }
 
   // // DB 불러오기 버튼 클릭 이벤트
   const recallDBFunc = async (event) => {
@@ -315,7 +271,6 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
         }
       });
 
-      console.log(geoData)
       const data = {
         name: 'test',
         vertices: geoUniqueVertices,
@@ -366,26 +321,11 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
 
   //distance func
   const distanceFunc = (event) => {
-    const viewer = cesiumManager.getViewer();
-
-    // 클릭된 위치의 객체를 가져옴
-    var pickedObject = viewer.scene.pick(event.position);
-
-    // 객체가 선택되었는지 확인
-    if (Cesium.defined(pickedObject)) {
-        // 선택된 객체가 primitives instance인지 확인
-        if (pickedObject.primitive) {
-          // primitives instance라면 꼭짓점들의 거리 계산
-            console.log("Picked object is a primitive instance.");
-
-        } else {
-            console.log("Picked object is not a primitive instance.");
-        }
-    } else {
-        console.log("No object picked.");
+    const scene = cesiumManager.getViewer().scene;
+    const cartesian = scene.pickPosition(event.position);
+    if (cartesian) {
+      dispatch({ type: 'ADD_POINT', payload: cartesian });
     }
-
-
   }
 
   // test func
@@ -393,8 +333,6 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
     const viewer = cesiumManager.getViewer();
     const scene = viewer.scene;
     const ecefPosition = scene.camera.pickEllipsoid(event.position, scene.globe.ellipsoid);
-
-    console.log(ecefPosition);
     
     //const ecefPosition = new Cesium.Cartesian3(6378137.0, 0.0, 0.0); // Example ECEF coordinates
     const cartographic = Cesium.Ellipsoid.WGS84.cartesianToCartographic(ecefPosition);
@@ -402,9 +340,6 @@ const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygo
     if (cartographic) {
         const webMercatorProjection = new Cesium.WebMercatorProjection();
         const mercatorPosition = webMercatorProjection.project(cartographic);
-        console.log(mercatorPosition);
-        console.log('Web Mercator X:', mercatorPosition.x);
-        console.log('Web Mercator Y:', mercatorPosition.y);
     }
   } 
 
@@ -513,6 +448,28 @@ const moveCameraToOrigin = () => {
       {/* 클릭된 좌표들에 대한 인덱스 표시 */}
       {buttonsState.showIndex && clickedPositions.map(renderIndexEntity)}
       <Cesium3DTileset url="../assets/MetadataGranularities/tileset.json" />
+
+      {/* 생성된 선들을 표시 */}
+      {distanceState.lines.map((line, index) => (
+        <Entity
+          key={index}
+          polyline={{
+            positions: [line.start, line.end],
+            width: 2,
+            material: Cesium.Color.YELLOW,
+          }}
+          position={Cesium.Cartesian3.midpoint(line.start, line.end, new Cesium.Cartesian3())} // 라벨의 위치를 선의 중간에 설정
+          label={{
+            text: `Length: ${line.length.toFixed(2)} meters`, // 라벨에 길이를 표시
+            font: '14pt monospace',
+            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+            outlineWidth: 2,
+            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+            pixelOffset: new Cesium.Cartesian2(0, -10),
+          }}
+        />
+      ))}
+
     </Viewer>
   );
 };
