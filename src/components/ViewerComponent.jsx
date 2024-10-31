@@ -6,17 +6,21 @@ import { getCentroidCartesian, moveCentroidToCoordinate, checkDistance, checkDis
 import { apiRequest } from '../utils/apiRequest';
 import CesiumManager from '../utils/CesiumManager';
 import PolygonManager from '../utils/PolygonManager';
-
+import Gizmo from './Gizmo/Gizmo';
+import GizmoScene from './GizmoScene/GizmoScene';
 
 
 
 const ViewerComponent = ({ clickedPositions, setClickedPositions, selectedPolygon, setSelectedPolygon, distanceState, dispatch }) => {
   const { buttonsState } = useContext(DefaultContext);
-  const viewerRef = useRef();
-  const [centroidEntity, setCentroidEntity] = useState();
-  const [polygonManager, setPolygonManager] = useState();
-  const [cesiumManager, setCesiumManager] = useState();
+  const viewerRef = useRef(null);
+  const [centroidEntity, setCentroidEntity] = useState(null);
+  const [polygonManager, setPolygonManager] = useState(null);
+  const [cesiumManager, setCesiumManager] = useState(null);
+  const [gizmoManager, setGizmoManager] = useState(null);
   const [tileset, setTileset] = useState(null);
+  const [selectedEntity, setSelectedEntity] = useState(null); // 선택된 Entity
+
 
   // 초기위치 세팅로직
   useEffect(() => {
@@ -403,7 +407,46 @@ const moveCameraToOrigin = () => {
     duration: 2  // 2초 동안 이동
   });
 };
+
+const handleAxisSelected = (axis) => {
+  if (!selectedEntity) return; // 선택된 폴리곤이 없으면 반환
+    const viewer = viewerRef.current.cesiumElement;
+
+    const entityPosition = selectedEntity.position.getValue(Cesium.JulianDate.now());
+
+    // 선택된 축을 기준으로 카메라 이동/회전
+    if (axis === 'X') {
+      viewer.camera.flyTo({
+        destination: Cartesian3.add(entityPosition, new Cartesian3(500000, 0, 0), new Cartesian3()),
+        orientation: {
+          heading: CesiumMath.toRadians(0),
+          pitch: CesiumMath.toRadians(-45),
+          roll: 0.0
+        }
+      });
+    } else if (axis === 'Y') {
+      viewer.camera.flyTo({
+        destination: Cartesian3.add(entityPosition, new Cartesian3(0, 500000, 0), new Cartesian3()),
+        orientation: {
+          heading: CesiumMath.toRadians(90),
+          pitch: CesiumMath.toRadians(-45),
+          roll: 0.0
+        }
+      });
+    } else if (axis === 'Z') {
+      viewer.camera.flyTo({
+        destination: Cartesian3.add(entityPosition, new Cartesian3(0, 0, 500000), new Cartesian3()),
+        orientation: {
+          heading: CesiumMath.toRadians(0),
+          pitch: CesiumMath.toRadians(-90),
+          roll: 0.0
+        }
+      });
+    }
+}
+
   return (
+    <>
     <Viewer ref={viewerRef} 
     full={false} 
     style={{width:'100%', height:'80vh'}}
@@ -469,8 +512,11 @@ const moveCameraToOrigin = () => {
           }}
         />
       ))}
-
+      
     </Viewer>
+    <Gizmo setGizmoManager={setGizmoManager} onAxisSelected={handleAxisSelected} cesiumViewer={cesiumManager!=null ? cesiumManager.getViewer() : null}/>
+    {/* <GizmoScene /> */}
+    </>
   );
 };
 

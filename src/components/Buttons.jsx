@@ -38,14 +38,17 @@ const entityClear = () => {
         activeButtons('recallListDB');
       break;
       case 'moveCamera':
-      activeButtons('moveCamera');
+        activeButtons('moveCamera');
       break;
       case 'distance':
-      if(buttonsState.distance) clearDistanceLines();
-      activeButtons('distance');
+        if(buttonsState.distance) clearDistanceLines();
+        activeButtons('distance');
+      break;
+      case 'gizmo':
+        activeButtons('gizmo');
       break;
       case 'test':
-      activeButtons('test');
+        activeButtons('test');
       break;
       default:  
         return;   
@@ -64,6 +67,7 @@ const entityClear = () => {
       <Button color={buttonsState.recallListDB ? 'primary' : 'default'} onClick={() => handleButtonClick('recallListDB')}>RecallList Star from DB</Button>
       <Button color={buttonsState.moveCamera ? 'primary' : 'default'} onClick={() => handleButtonClick('moveCamera')}>Move camera 0,0</Button>
       <Button color={buttonsState.distance ? 'primary' : 'default'} onClick={() => handleButtonClick('distance')}>Check distance</Button>
+      <Button color={buttonsState.gizmo ? 'primary' : 'default'} onClick={() => handleButtonClick('gizmo')}>Use Gizmo</Button>
       <Button color={buttonsState.test ? 'primary' : 'default'} onClick={() => handleButtonClick('test')}>test</Button>
       </div>
     </div>
