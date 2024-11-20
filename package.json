@@ -14,6 +14,8 @@
     "@emotion/styled": "^11.13.0",
     "@jscad/csg": "^0.7.0",
     "@mui/material": "^6.0.0",
+    "@react-three/drei": "^9.115.0",
+    "@react-three/fiber": "^8.17.10",
     "axios": "^1.7.7",
     "cesium": "^1.120.0",
     "cesium-react": "^0.2.2",
